@@ -1,9 +1,19 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
+import { validateBuildApiUrl } from './src/config/deployment.js'
 import react from '@vitejs/plugin-react'
 import mkcert from 'vite-plugin-mkcert'
 import { fileURLToPath, URL } from 'node:url'
 
-export default defineConfig({
+export default defineConfig(({ command, mode }) => {
+  let apiBaseUrl;
+  if (command === 'build') {
+    const env = loadEnv(mode, process.cwd(), 'VITE_');
+    apiBaseUrl = validateBuildApiUrl(process.env.VITE_API_BASE_URL || env.VITE_API_BASE_URL, {
+      publicDeployment: process.env.VERCEL === '1',
+    });
+  }
+  return {
+  define: apiBaseUrl ? { 'import.meta.env.VITE_API_BASE_URL': JSON.stringify(apiBaseUrl) } : {},
   plugins: [
     react(),
     mkcert() 
@@ -39,4 +49,5 @@ export default defineConfig({
       }
     }
   }
+  };
 })
