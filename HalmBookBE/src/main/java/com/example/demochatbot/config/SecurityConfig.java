@@ -98,12 +98,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/chat/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/user/support-tickets", "/api/user/support-tickets/**").permitAll()
-                        .requestMatchers("/api/admin/support-tickets", "/api/admin/support-tickets/**").permitAll()
-                        .requestMatchers("/api/admin/analytics", "/api/admin/analytics/**").permitAll()
 
                         // 3. Phân quyền cho gói nạp và khuyến mãi:
                         // Cho phép độc giả xem danh sách công khai (GET)
-                        .requestMatchers(HttpMethod.GET, "/api/home/promotions", "/api/home/vouchers", "/api/promotions", "/api/promotions/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/home/promotions", "/api/home/vouchers").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/home/potato/packages").permitAll()
                         // Yêu cầu quyền ADMIN cho các thao tác quản trị gói nạp & khuyến mãi
                         .requestMatchers("/api/home/potato/packages/all", "/api/home/potato/packages/admin").hasAnyAuthority("ROLE_ADMIN", "ADMIN")
@@ -132,6 +130,11 @@ public class SecurityConfig {
                 )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                        .accessDeniedHandler((request, response, denied) -> {
+                            response.setStatus(HttpStatus.FORBIDDEN.value());
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write("{\"status\":403,\"error\":\"FORBIDDEN\",\"message\":\"Bạn không có quyền thực hiện thao tác này.\"}");
+                        })
                 );
 
         // 4. Chèn bộ lọc JWT tự tạo vào trước UsernamePasswordAuthenticationFilter

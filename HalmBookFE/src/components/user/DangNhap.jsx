@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import './css/DangNhap.css';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import axios from 'axios';
+import authRequest, { getAuthErrorMessage } from '@/services/authRequest';
 import Popup from './layout/Popup';
 import logo from '@/assets/images/logo.png';
 import { useGoogleLogin } from '@react-oauth/google';
 import fbLoginModule from 'react-facebook-login/dist/facebook-login-render-props';
 import { saveAuthSession, isTokenValid, getAuthRole, getAdminAuthRole } from '@/services/authToken';
 
-import { API_BASE_URL } from '@/constants/apiEndpoints';
 const FacebookLogin = fbLoginModule.default || fbLoginModule;
 
 export default function DangNhap() {
@@ -122,7 +121,7 @@ export default function DangNhap() {
     setIsSubmitting(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+      const response = await authRequest.post('/api/auth/login', {
         username: u,
         password: p,
       });
@@ -158,7 +157,9 @@ export default function DangNhap() {
         if (typeof error.response.data === 'string') errMsg = error.response.data;
         else if (error.response.data.message) errMsg = error.response.data.message;
       }
-      setPopup({ message: errMsg, type: 'error' });
+      setPopup({ message: getAuthErrorMessage(error, errMsg), type: 'error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -199,7 +200,7 @@ export default function DangNhap() {
     setIsSubmitting(true);
 
     try {
-      await axios.post(`${API_BASE_URL}/api/auth/register`, {
+      await authRequest.post('/api/auth/register', {
         username: u,
         email: em,
         password: p,
@@ -223,7 +224,9 @@ export default function DangNhap() {
         if (typeof error.response.data === 'string') errMsg = error.response.data;
         else if (error.response.data.message) errMsg = error.response.data.message;
       }
-      setPopup({ message: errMsg, type: 'error' });
+      setPopup({ message: getAuthErrorMessage(error, errMsg), type: 'error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -234,7 +237,7 @@ export default function DangNhap() {
     onSuccess: async (tokenResponse) => {
       setIsSubmitting(true);
       try {
-        const response = await axios.post(`${API_BASE_URL}/api/auth/google`, {
+        const response = await authRequest.post('/api/auth/google', {
           token: tokenResponse.access_token,
         });
 
@@ -254,7 +257,9 @@ export default function DangNhap() {
         ) {
           errMsg = error.response?.data?.message || 'Tài khoản hiện đang bị khóa, vui lòng gọi hotline để hỗ trợ.';
         }
-        setPopup({ message: errMsg, type: 'error' });
+        setPopup({ message: getAuthErrorMessage(error, errMsg), type: 'error' });
+      } finally {
+        setIsSubmitting(false);
       }
     },
     onError: () => {
@@ -269,7 +274,7 @@ export default function DangNhap() {
     if (response?.accessToken) {
       setIsSubmitting(true);
       try {
-        const res = await axios.post(`${API_BASE_URL}/api/auth/facebook`, {
+        const res = await authRequest.post('/api/auth/facebook', {
           token: response.accessToken,
         });
 
@@ -289,7 +294,9 @@ export default function DangNhap() {
         ) {
           errMsg = error.response?.data?.message || 'Tài khoản hiện đang bị khóa, vui lòng gọi hotline để hỗ trợ.';
         }
-        setPopup({ message: errMsg, type: 'error' });
+        setPopup({ message: getAuthErrorMessage(error, errMsg), type: 'error' });
+      } finally {
+        setIsSubmitting(false);
       }
     } else {
       setPopup({ message: 'Đăng nhập Facebook bị hủy.', type: 'error' });

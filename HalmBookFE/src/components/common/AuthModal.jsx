@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import axios from 'axios';
+import authRequest, { getAuthErrorMessage } from '@/services/authRequest';
 import { useGoogleLogin } from '@react-oauth/google';
 import fbLoginModule from 'react-facebook-login/dist/facebook-login-render-props';
 import { saveAuthSession } from '@/services/authToken';
@@ -9,7 +9,6 @@ import { getTierInfo } from '@/utils/tierUtils';
 import halmToast from '@/utils/toast';
 import logo from '@/assets/images/logo.png';
 
-import { API_BASE_URL } from '@/constants/apiEndpoints';
 const FacebookLogin = fbLoginModule.default || fbLoginModule;
 
 /**
@@ -274,7 +273,7 @@ export default function AuthModal({
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+      const response = await authRequest.post('/api/auth/login', {
         username: u,
         password: p,
       });
@@ -294,7 +293,9 @@ export default function AuthModal({
       } else if (typeof err.response?.data === 'string') {
         msg = err.response.data;
       }
-      triggerToast('error', typeof msg === 'string' ? msg : 'Đăng nhập thất bại. Vui lòng kiểm tra lại!');
+      triggerToast('error', getAuthErrorMessage(err, msg));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -338,7 +339,7 @@ export default function AuthModal({
     setIsLoading(true);
 
     try {
-      await axios.post(`${API_BASE_URL}/api/auth/register`, {
+      await authRequest.post('/api/auth/register', {
         username: u,
         email: em,
         password: newPassword,
@@ -355,7 +356,9 @@ export default function AuthModal({
     } catch (err) {
       setIsLoading(false);
       const msg = err.response?.data?.message || err.response?.data || 'Đăng ký thất bại. Vui lòng thử lại.';
-      triggerToast('error', typeof msg === 'string' ? msg : 'Lỗi hệ thống khi đăng ký.');
+      triggerToast('error', getAuthErrorMessage(err, typeof msg === 'string' ? msg : undefined));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -366,7 +369,7 @@ export default function AuthModal({
     onSuccess: async (tokenResponse) => {
       try {
         setIsLoading(true);
-        const res = await axios.post(`${API_BASE_URL}/api/auth/google`, {
+        const res = await authRequest.post('/api/auth/google', {
           token: tokenResponse.access_token,
         });
         notifyAuthSuccess(res.data);
@@ -375,7 +378,9 @@ export default function AuthModal({
         const msg = (err.response?.status === 403 || err.response?.status === 423 || err.response?.data?.error === 'ACCOUNT_LOCKED')
           ? (err.response?.data?.message || 'Tài khoản hiện đang bị khóa, vui lòng gọi hotline để hỗ trợ.')
           : 'Xác thực Google thất bại ở máy chủ.';
-        triggerToast('error', msg);
+        triggerToast('error', getAuthErrorMessage(err, msg));
+      } finally {
+        setIsLoading(false);
       }
     },
     onError: () => {
@@ -387,7 +392,7 @@ export default function AuthModal({
     if (response?.accessToken) {
       try {
         setIsLoading(true);
-        const res = await axios.post(`${API_BASE_URL}/api/auth/facebook`, {
+        const res = await authRequest.post('/api/auth/facebook', {
           token: response.accessToken,
         });
         notifyAuthSuccess(res.data);
@@ -396,7 +401,9 @@ export default function AuthModal({
         const msg = (err.response?.status === 403 || err.response?.status === 423 || err.response?.data?.error === 'ACCOUNT_LOCKED')
           ? (err.response?.data?.message || 'Tài khoản hiện đang bị khóa, vui lòng gọi hotline để hỗ trợ.')
           : 'Xác thực Facebook thất bại ở máy chủ.';
-        triggerToast('error', msg);
+        triggerToast('error', getAuthErrorMessage(err, msg));
+      } finally {
+        setIsLoading(false);
       }
     }
   };

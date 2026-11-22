@@ -5,12 +5,14 @@ import logo from "@/assets/images/logo.png";
 import { isTokenValid } from "@/services/authToken";
 import { openAuthModal } from "@/components/common/AuthModal";
 import { getSiteSettings, fetchSiteSettings } from "@/services/bannerService";
+import { getAppDownloadUrl } from '@/config/appLinks';
 
 const FOOTER_LINK_CLASS = "transition-colors hover:text-[#8B4A3C] dark:hover:text-[#D4AF37]";
 
 export default function UserFooter({ onOpenChatbot }) {
   const [settings, setSettings] = useState(() => getSiteSettings());
   const [legalModal, setLegalModal] = useState({ isOpen: false, tab: 'terms' });
+  const appDownloadUrl = getAppDownloadUrl(settings);
 
   const openLegalModal = (tab = 'terms') => {
     setLegalModal({ isOpen: true, tab });
@@ -66,8 +68,8 @@ export default function UserFooter({ onOpenChatbot }) {
               <div className="flex items-center gap-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/15 text-[#D4AF37]"><i className="ph-bold ph-map-pin"></i></span><span>{settings.address || "03 Quang Trung, TP. Đà Nẵng"}</span></div>
             </div>
             <div className="flex max-w-[260px] items-center gap-2.5 rounded-2xl border border-[#2C2E29] bg-[#181916] p-2.5 shadow-sm">
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=HALMBookApp" alt="Mã QR tải ứng dụng" className="h-16 w-16 rounded-xl object-contain bg-white p-1" loading="lazy" />
-              <div className="text-xs"><div className="font-bold text-[#FAF7F0]">Ứng dụng HALM BOOK</div><div className="mt-0.5 text-[11px] text-[#D4AF37]">Quét tải app iOS & Android</div></div>
+              {appDownloadUrl && <a href={appDownloadUrl} aria-label="Mở ứng dụng HALM BOOK"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(appDownloadUrl)}`} alt="Mã QR mở ứng dụng" className="h-16 w-16 rounded-xl object-contain bg-white p-1" loading="lazy" /></a>}
+              <div className="text-xs"><div className="font-bold text-[#FAF7F0]">Ứng dụng HALM BOOK</div><div className="mt-0.5 text-[11px] text-[#D4AF37]">{appDownloadUrl ? 'Quét mã để mở ứng dụng' : 'Liên kết mở ứng dụng sẽ được cập nhật'}</div></div>
             </div>
           </section>
           <section className="lg:pl-4">

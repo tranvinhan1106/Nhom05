@@ -55,6 +55,12 @@ export default function OffersEnd() {
   const [comboOffers, setComboOffers] = useState([]);
   const [singleBookDeals, setSingleBookDeals] = useState([]);
   const [challengeOffers] = useState([]);
+  const [loadStatus, setLoadStatus] = useState({ packages: 'loading', promotions: 'loading', books: 'loading' });
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const retryOffers = () => setLoadAttempt(value => value + 1);
+  const loadNotice = (kind) => loadStatus[kind] === 'loading'
+    ? <p role="status" className="p-6">Đang tải ưu đãi…</p>
+    : <div role="alert" className="p-6">Không tải được ưu đãi. Vui lòng kiểm tra kết nối. <button type="button" onClick={retryOffers} className="underline">Thử lại</button></div>;
 
   const popupHideTimeout = useRef(null);
   const popupCloseTimeout = useRef(null);
@@ -62,6 +68,10 @@ export default function OffersEnd() {
 
   useEffect(() => {
     let isMounted = true;
+    setLoadStatus({ packages: 'loading', promotions: 'loading', books: 'loading' });
+    const markLoaded = (kind, status) => {
+      if (isMounted) setLoadStatus(previous => ({ ...previous, [kind]: status }));
+    };
 
     // 1. Lấy số dư Khoai thực tế của người dùng nếu đã đăng nhập
     if (isTokenValid()) {
@@ -84,7 +94,8 @@ export default function OffersEnd() {
     // 2. Tự động nạp gói ưu đãi thực tế từ Database MySQL (bảng potato_package)
     getPotatoPackages()
       .then((pkgs) => {
-        if (isMounted && Array.isArray(pkgs) && pkgs.length > 0) {
+        if (!Array.isArray(pkgs)) throw new Error('Invalid package response');
+        if (isMounted) {
           setSubscriptionOffers(pkgs.map(p => {
             const id = p.packageId || p.package_id || p.id;
             const name = p.packageName || p.package_name || p.name || 'Gói Nạp Khoai';
@@ -111,14 +122,16 @@ export default function OffersEnd() {
             };
           }));
         }
+        markLoaded('packages', 'success');
       })
-      .catch(() => {});
+      .catch(() => markLoaded('packages', 'error'));
 
     // 2.1. Tải danh sách Voucher & Khuyến mãi thực tế từ Database MySQL (bảng promotion qua /api/home/promotions)
     axiosInstance.get('/api/home/promotions')
       .then((res) => {
-        const promos = Array.isArray(res.data) ? res.data : [];
-        if (isMounted && promos.length > 0) {
+        if (!Array.isArray(res.data)) throw new Error('Invalid promotion response');
+        const promos = res.data;
+        if (isMounted) {
           setUploadOffers(promos.map((p) => {
             const code = p.promotion_id || p.promotionId || p.code || p.id;
             const title = p.promotion_name || p.promotionName || p.name || `Voucher ${code}`;
@@ -142,13 +155,19 @@ export default function OffersEnd() {
             };
           }));
         }
+        markLoaded('promotions', 'success');
       })
-      .catch(() => {});
+      .catch(() => markLoaded('promotions', 'error'));
 
     // 2.2. Lắng nghe cập nhật Combo Sách & Sách Lẻ Giảm Sâu từ Quản Trị Hệ Thống
     const handleOffersUpdated = async () => {
-      try { const [combos, deals] = await Promise.all([getCombos(), getSingleDeals()]); if (isMounted) { setComboOffers(combos); setSingleBookDeals(deals); } }
-      catch { if (isMounted) { setComboOffers([]); setSingleBookDeals([]); } }
+      markLoaded('books', 'loading');
+      try {
+        const [combos, deals] = await Promise.all([getCombos(), getSingleDeals()]);
+        if (!Array.isArray(combos) || !Array.isArray(deals)) throw new Error('Invalid book offer response');
+        if (isMounted) { setComboOffers(combos); setSingleBookDeals(deals); }
+        markLoaded('books', 'success');
+      } catch { markLoaded('books', 'error'); }
     };
     void handleOffersUpdated();
     window.addEventListener('halm-offers-updated', handleOffersUpdated);
@@ -205,12 +224,13 @@ export default function OffersEnd() {
 
     return () => {
       isMounted = false;
+      tailwindScript.remove();
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('halm-theme-change', handleThemeChange);
       window.removeEventListener('halm-potato-updated', handlePotatoUpdated);
       window.removeEventListener('halm-offers-updated', handleOffersUpdated);
     };
-  }, []);
+  }, [loadAttempt]);
 
   const renderStars = () => {
     if (!isDark) return null;
@@ -495,7 +515,7 @@ export default function OffersEnd() {
 
             {/* TODO(API): Tải danh sách gói cước từ database */}
             <div id="cards-row-1" className="cards-scroll-container">
-              {subscriptionOffers.length === 0 ? (
+              {loadStatus['packages'] !== 'success' ? loadNotice('packages') : subscriptionOffers.length === 0 ? (
                 renderEmptySection('ph-crown', 'Chưa có gói cước ưu đãi nào đang mở', 'Dữ liệu các gói nạp và gói cước hội viên sẽ được cập nhật tự động từ cơ sở dữ liệu.')
               ) : (
                 subscriptionOffers.map((item) => (
@@ -579,7 +599,7 @@ export default function OffersEnd() {
             </div>
 
             <div id="cards-row-2" className="cards-scroll-container">
-              {uploadOffers.length === 0 ? (
+              {loadStatus['promotions'] !== 'success' ? loadNotice('promotions') : uploadOffers.length === 0 ? (
                 renderEmptySection('ph-ticket', 'Chưa có voucher ưu đãi', 'Các mã giảm giá và voucher quà tặng từ hệ thống sẽ hiển thị tại đây khi được kích hoạt.')
               ) : (
                 uploadOffers.map((item) => (
@@ -649,7 +669,7 @@ export default function OffersEnd() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {comboOffers.length === 0 ? (
+              {loadStatus['books'] !== 'success' ? loadNotice('books') : comboOffers.length === 0 ? (
                 <div className="col-span-1 sm:col-span-2 lg:col-span-3 w-full">
                   {renderEmptySection('ph-stack', 'Chưa có combo sách ưu đãi', 'Các bộ sưu tập sách theo chủ đề đi kèm mức giá ưu đãi đang được cập nhật từ hệ thống.')}
                 </div>
@@ -741,7 +761,7 @@ export default function OffersEnd() {
             </div>
 
             <div id="cards-row-4" className="cards-scroll-container">
-              {singleBookDeals.length === 0 ? (
+              {loadStatus['books'] !== 'success' ? loadNotice('books') : singleBookDeals.length === 0 ? (
                 renderEmptySection('ph-book-open', 'Chưa có sách lẻ giảm sâu', 'Danh sách tác phẩm có chi phí mở khóa ưu đãi sẽ được hiển thị khi kết nối dữ liệu.')
               ) : (
                 singleBookDeals.map((item) => (
