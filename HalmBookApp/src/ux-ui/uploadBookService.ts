@@ -75,7 +75,7 @@ export interface UploadResult {
 // ============================================================================
 export const fetchBookCategories = async (): Promise<BookCategory[]> => {
   try {
-    const res = await axios.get(`${API_BASE_URL}/api/admin/books/categories`, {
+    const res = await axios.get(`${API_BASE_URL}/api/home/categories`, {
       timeout: 5000,
     });
     if (Array.isArray(res.data) && res.data.length > 0) {

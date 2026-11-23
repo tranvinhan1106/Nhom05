@@ -55,3 +55,24 @@ test('unavailable offers and rejected coupons remain failures without a fabricat
   await assert.rejects(service.applyPromotionToCart('OFF'), /expired offer/); assert.equal(calls, 2);
   const guest = load(async () => { throw Error('should not call'); }, null).service; await assert.rejects(guest.getCartQuote([1]), /đăng nhập/);
 });
+
+test('the admin feed includes live packages and empty server snapshots clear every offer group', async () => {
+  let empty = false; const calls = [];
+  const { service } = load(async path => { calls.push(path); return { data: empty ? [] : [{ id: path }] }; });
+  assert.equal((await service.fetchOfferFeed()).packages[0].id, '/api/home/potato/packages');
+  assert.ok(calls.includes('/api/home/promotions') && calls.includes('/api/home/book-offers'));
+  empty = true;
+  const cleared = await service.fetchOfferFeed();
+  assert.equal(cleared.packages.length + cleared.offers.length + cleared.promotions.length, 0);
+});
+
+test('current admin single offers reach both the hero and discount rows without legacy cache data', () => {
+  const { service, policy } = load();
+  const offer = { id: 'server-offer', kind: 'SINGLE', status: 'ACTIVE', name: 'Real offer', books: ['Book'], bookIds: ['B0004'], bookDetails: [{ book_id: 'B0004' }], potato: 0, originalPotato: 9, planKey: '7' };
+  const rows = service.offerCatalogRows([offer], [], [], policy);
+  assert.equal(rows.singles[0].offerId, 'server-offer');
+  assert.equal(rows.discountBooks[0].book_id, 'B0004');
+  assert.equal(rows.discountBooks[0].rent_price, 0);
+  assert.equal(service.offerCatalogRows([{ ...offer, status: 'INACTIVE' }], [], [], policy).singles.length, 0);
+  assert.equal(service.offerCatalogRows([], [], [], policy).discountBooks.length, 0);
+});

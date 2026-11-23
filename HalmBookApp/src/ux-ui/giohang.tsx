@@ -1,6 +1,6 @@
 import { CartQuote, getCartQuote, clearCartCoupon } from './offersService';
 import { CommercePolicy, fetchCommercePolicy, rentalPlanPrice } from './commercePolicy';
-import { API_BASE_URL, CANDIDATE_API_URLS as CANDIDATE_URLS } from './apiService';
+import { API_BASE_URL, CANDIDATE_API_URLS as CANDIDATE_URLS, normalizeAssetUrl } from './apiService';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   StyleSheet,
@@ -296,20 +296,10 @@ export default function GioHang() {
   }, []);
 
   const resolveCoverUrl = useCallback(
-    (rawUrl: string | null | undefined, bookId: string, baseHost: string): string | null => {
-      if (rawUrl && typeof rawUrl === 'string' && rawUrl.trim().length > 0) {
-        if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(rawUrl)) {
-          return rawUrl;
-        }
-        const cleanPath = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
-        return `${baseHost}${cleanPath}`;
-      }
-      if (bookId) {
-        return `${baseHost}/api/home/covers/${bookId}.jpg`;
-      }
-      return null;
-    },
-    []
+    (rawUrl: string | null | undefined, _bookId: string, baseHost: string): string | null => {
+      const url = rawUrl ? normalizeAssetUrl(rawUrl, baseHost) : '';
+      return url || null;
+    }, []
   );
 
   // ==============================================================

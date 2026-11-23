@@ -899,6 +899,7 @@ export default function TrangChu({ isDarkMode, onToggleDarkMode }: TrangChuProps
               {unreadNotifications > 0 && <View style={{ position: 'absolute', top: 3, right: 2, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, backgroundColor: '#D5AC56', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 9, fontWeight: '800', color: '#382F23' }}>{unreadNotifications > 99 ? '99+' : unreadNotifications}</Text></View>}
             </TouchableOpacity>
           </View>
+          <HomeBannerCarousel width={window.width} refreshKey={historyRefreshKey} />
           {featuredItems.length > 0 ? <>
             <ScrollView ref={featuredRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carouselContainer}
               scrollEventThrottle={16}

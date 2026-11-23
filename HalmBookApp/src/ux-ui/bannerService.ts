@@ -52,6 +52,8 @@ export function parseAppBanners(data: unknown): AppBanner[] {
 }
 
 export async function fetchAppBanners(signal: AbortSignal): Promise<AppBanner[]> {
-  const response = await fetchApiWithFallback<unknown>('/api/home/banners', { params: { platform: 'APP' }, signal });
+  const response = await fetchApiWithFallback<unknown>('/api/home/banners', {
+    params: { platform: 'APP' }, headers: { 'Cache-Control': 'no-cache' }, signal,
+  });
   return parseAppBanners(response.data);
 }

@@ -28,6 +28,33 @@ function setup(server = async () => { throw Error("offline"); }) {
 }
 const message = title => ({ type: 'system', title, message: 'Test notification' });
 
+test('admin inbox refresh includes a newly arrived remote notification and reports cache-only fallback', async () => {
+  let rows = [], offline = false;
+  const { api, values } = setup(async () => {
+    if (offline) throw new Error('offline');
+    return { data: { notifications: rows, unreadCount: rows.length } };
+  });
+  values.set('userToken', 'valid-token');
+  assert.equal((await api.getNotifications()).length, 0);
+  rows = [{ notificationId: 42, title: 'From admin', message: 'New announcement', type: 'SYSTEM', isRead: false, createdAt: '2026-11-23T10:00:00' }];
+  assert.equal((await api.getNotifications())[0].title, 'From admin');
+  assert.equal(await api.getUnreadNotificationCount(), 1);
+  offline = true;
+  assert.equal((await api.getNotifications())[0].id, 'be_42');
+  assert.ok(await api.getNotificationSyncError());
+  offline = false;
+  await api.getNotifications();
+  assert.equal(await api.getNotificationSyncError(), '');
+});
+
+test('invalid remote inbox data preserves local messages and cannot masquerade as a successful sync', async () => {
+  const { api, values } = setup(async () => ({ data: '<html>wrong host</html>' }));
+  values.set('userToken', 'valid-token');
+  await api.addNotification(message('Saved'));
+  assert.equal((await api.getNotifications())[0].title, 'Saved');
+  assert.ok(await api.getNotificationSyncError());
+});
+
 test('new account has an empty inbox, with no synthetic transactions', async () => {
   const { api } = setup();
   assert.equal((await api.getNotifications()).length, 0);

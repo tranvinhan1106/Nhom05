@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ComponentRef, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { fetchApiWithFallback } from './apiService';
+import { fetchApiWithFallback, normalizeAssetUrl } from './apiService';
 import { getBookCoverSource } from './bookCovers';
 import { getBookChapterLabel } from './bookContentService';
 import { BookData, GenreBooksParams, useAppNavigation } from './navigation';
@@ -71,9 +71,7 @@ export default function GenreBooksScreen({ genre }: { genre?: GenreBooksParams }
             id: String(item.book_id),
             title: item.bookName,
             author: item.author,
-            img_url: item.img_url
-              ? (/^(https?:|data:|file:)/.test(item.img_url) ? item.img_url : `${baseUrl}/${item.img_url.replace(/^\/+/, '')}`)
-              : `${baseUrl}/api/home/covers/${encodeURIComponent(item.book_id)}.jpg`,
+            img_url: item.img_url ? normalizeAssetUrl(item.img_url, baseUrl) : undefined,
             category_name: item.category_name,
             price: item.rent_price,
             rent_price: item.rent_price,
