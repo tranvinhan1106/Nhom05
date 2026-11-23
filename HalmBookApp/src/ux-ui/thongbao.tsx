@@ -22,6 +22,7 @@ import {
   clearAllNotifications,
   deleteNotification,
   getNotifications,
+  getNotificationSyncError,
   markAllNotificationsAsRead,
   markNotificationAsRead,
   NotificationType,
@@ -146,6 +147,7 @@ export default function ThongBaoScreen({ onBack }: { onBack: () => void }) {
   const [tab, setTab] = useState<TabKey>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [syncError, setSyncError] = useState('');
   const [busy, setBusy] = useState(false);
   const [detailItem, setDetailItem] = useState<AppNotification | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
@@ -203,11 +205,13 @@ export default function ThongBaoScreen({ onBack }: { onBack: () => void }) {
       }
       try {
         const result = await getNotifications();
+        const error = await getNotificationSyncError();
         if (mounted.current && currentTicket === loadVersion.current) {
           setItems(result);
+          setSyncError(error);
         }
       } catch {
-        // Fallback gracefully
+        if (mounted.current && currentTicket === loadVersion.current) setSyncError('Chưa tải được thông báo.');
       } finally {
         if (mounted.current && currentTicket === loadVersion.current) {
           setLoading(false);
@@ -507,6 +511,9 @@ export default function ThongBaoScreen({ onBack }: { onBack: () => void }) {
           </ScrollView>
         </View>
 
+        {!!syncError && <Pressable accessibilityRole="button" accessibilityLabel="Thử lại đồng bộ thông báo" onPress={() => void loadData(true)} style={{ paddingHorizontal: 20, paddingVertical: 12 }}>
+          <Text style={{ color: colors.textMuted }}>{en ? 'New notifications could not sync. Showing saved notifications. Tap to retry.' : 'Chưa đồng bộ được thông báo mới. Đang hiển thị dữ liệu đã lưu. Chạm để thử lại.'}</Text>
+        </Pressable>}
         {/* Notification List */}
         <FlatList
           data={filteredItems}

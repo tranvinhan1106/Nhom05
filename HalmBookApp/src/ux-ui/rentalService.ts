@@ -88,7 +88,7 @@ export const isPersonalOrLocalBook = (book: any): boolean => {
 
 export const resolveCoverUrlWithBase = (
   rawUrl?: string | null,
-  bookId?: string,
+  _bookId?: string,
   baseHost: string = API_BASE_URL
 ): string => {
   if (rawUrl && typeof rawUrl === 'string' && rawUrl.trim().length > 0) {
@@ -98,9 +98,6 @@ export const resolveCoverUrlWithBase = (
     }
     const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
     return `${baseHost}${cleanPath}`;
-  }
-  if (bookId && !bookId.startsWith('upload') && !bookId.startsWith('tmp')) {
-    return `${baseHost}/api/home/covers/${bookId}.jpg`;
   }
   return '';
 };

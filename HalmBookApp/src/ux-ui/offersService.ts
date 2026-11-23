@@ -6,7 +6,7 @@ export interface BookOffer {
   discount: string; planKey: string; status: string; bookIds: string[]; books: string[]; bookDetails: Record<string, any>[]; author: string; category: string;
 }
 export interface Promotion {
-  promotion_id: string; promotion_name: string; description?: string; discount_percent: number; discount_amount: number;
+  promotion_id: string; promotion_name: string; description?: string | null; discount_percent: number; discount_amount: number;
   book_id?: string | null; category_id?: number | null; category?: { category_id: number } | null;
   book_details?: Record<string, any> | null; eligible_books?: Record<string, any>[]; status?: string;
 }
@@ -15,7 +15,29 @@ export async function fetchOffers(signal?: AbortSignal) {
     fetchApiWithFallback<Promotion[]>('/api/home/promotions', { signal }),
     fetchApiWithFallback<BookOffer[]>('/api/home/book-offers', { signal }), fetchCommercePolicy(signal),
   ]);
+  if (!Array.isArray(promotions.data) || !Array.isArray(offers.data)) throw new Error('Dữ liệu ưu đãi từ backend không hợp lệ.');
   return { promotions: promotions.data, offers: offers.data, policy };
+}
+
+export async function fetchOfferFeed(signal?: AbortSignal) {
+  const [feed, packages] = await Promise.all([
+    fetchOffers(signal), fetchApiWithFallback<any[]>('/api/home/potato/packages', { signal }),
+  ]);
+  if (!Array.isArray(packages.data)) throw new Error('Dữ liệu gói nạp từ backend không hợp lệ.');
+  return { ...feed, packages: packages.data };
+}
+
+/** All visible deals come from the latest server snapshot, including an empty snapshot. */
+export function offerCatalogRows(offers: BookOffer[], promotions: Promotion[], books: Record<string, any>[], policy: CommercePolicy | null) {
+  const singles = offers.filter(offer => offer.kind === 'SINGLE' && (!offer.status || offer.status.toUpperCase() === 'ACTIVE')).map(offerRow);
+  const promoted = promotionRows(promotions, books, policy);
+  const byBook = new Map<string, any>();
+  for (const row of [...singles, ...promoted.featured, ...promoted.categories.filter(row => !row.couponOnly)]) {
+    if (!row.book_id) continue;
+    const previous = byBook.get(row.book_id);
+    if (!previous || row.rent_price < previous.rent_price) byBook.set(row.book_id, row);
+  }
+  return { singles, discountBooks: [...byBook.values()] };
 }
 async function mutate(path: string, data?: unknown, method = 'POST') {
   const token = await AsyncStorage.getItem('userToken'); if (!token) throw new Error('Vui lòng đăng nhập.');
@@ -62,5 +84,5 @@ export function offerRow(offer: BookOffer) {
   return { ...(offer.bookDetails[0] || {}), bookName: offer.name, author: offer.kind === 'COMBO' ? offer.books.length + ' cuốn · ' + offer.books.join(', ') : offer.author,
     img_url: offer.img || offer.bookDetails[0]?.img_url, offerId: offer.id, book_id: offer.kind === 'SINGLE' ? offer.bookIds[0] : undefined,
     original_price: offer.originalPotato, rent_price: offer.potato, discount_percent: offer.originalPotato > 0 ? Math.max(0, Math.round((1 - offer.potato / offer.originalPotato) * 100)) : 0,
-    description: offer.desc, planKey: offer.planKey };
+    description: offer.desc, planKey: offer.planKey, promo_name: offer.name };
 }

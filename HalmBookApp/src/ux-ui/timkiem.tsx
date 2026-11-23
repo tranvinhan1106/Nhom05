@@ -1,5 +1,5 @@
 import { recordMissionVisit } from './missionService';
-import { CANDIDATE_API_URLS } from './apiService';
+import { loadSearchCatalog } from './searchCatalog';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
@@ -264,83 +264,20 @@ export default function SearchScreen() {
 
   // 4. Gọi API Backend Spring Boot để lấy danh sách sách thật từ MySQL
   const searchBooksFromApi = useCallback(
-    async (query: string, signal?: AbortSignal) => {
+    async (_query: string, signal?: AbortSignal) => {
       setIsLoading(true);
       setErrorMessage(null);
-
-      const trimmedQuery = query.trim();
-      let fetchedRawList: any[] | null = null;
-      let lastError: any = null;
-
-      for (const baseUrl of CANDIDATE_API_URLS) {
-        // Thử gọi endpoint /api/books/search?keyword={query} trước nếu có từ khóa
-        if (trimmedQuery) {
-          try {
-            const searchRes = await axios.get(`${baseUrl}/api/books/search`, {
-              params: { keyword: trimmedQuery },
-              timeout: 4500,
-              signal,
-            });
-            const data = searchRes.data;
-            const list = Array.isArray(data)
-              ? data
-              : Array.isArray(data?.content)
-                ? data.content
-                : Array.isArray(data?.data)
-                  ? data.data
-                  : null;
-            if (list) {
-              fetchedRawList = list;
-              break;
-            }
-          } catch (err: any) {
-            if (axios.isCancel(err) || err?.name === 'CanceledError') return;
-          }
+      try {
+        const list = await loadSearchCatalog(signal);
+        if (!signal?.aborted) setAllBooks(list.map(mapApiBookToSearchItem));
+      } catch (error: any) {
+        if (!signal?.aborted && !axios.isCancel(error)) {
+          setErrorMessage(error?.response?.data?.message || error?.message || 'Không tải được danh mục tìm kiếm.');
         }
-
-        // Gọi endpoint sách thật từ Backend Spring Boot: GET /api/home/books
-        try {
-          const response = await axios.get(`${baseUrl}/api/home/books`, {
-            params: {
-              page: 0,
-              size: 100,
-              ...(trimmedQuery ? { keyword: trimmedQuery } : {}),
-            },
-            timeout: 7000,
-            signal,
-          });
-          const data = response.data;
-          const list = Array.isArray(data)
-            ? data
-            : Array.isArray(data?.content)
-              ? data.content
-              : Array.isArray(data?.data)
-                ? data.data
-                : null;
-          if (list) {
-            fetchedRawList = list;
-            break;
-          }
-        } catch (err: any) {
-          lastError = err;
-          if (axios.isCancel(err) || err?.name === 'CanceledError') return;
-        }
+      } finally {
+        if (!signal?.aborted) setIsLoading(false);
       }
-
-      if (fetchedRawList) {
-        const mappedBooks = fetchedRawList.map(mapApiBookToSearchItem);
-        setAllBooks(mappedBooks);
-        setIsLoading(false);
-      } else {
-        setErrorMessage(
-          lastError?.response?.data?.message ||
-            lastError?.message ||
-            'Không thể kết nối máy chủ để tải dữ liệu sách từ MySQL.'
-        );
-        setIsLoading(false);
-      }
-    },
-    []
+    }, []
   );
 
   // Tải danh sách sách thật từ MySQL ngay khi mở màn hình Tìm kiếm

@@ -54,6 +54,12 @@ const DELETED_PREFIX = '@halm_deleted_notifications_';
 const listeners = new Set<() => void>();
 const pending = new Map<string, Promise<unknown>>();
 const remoteRequests = new Map<string, Promise<BackendNotificationResponse>>();
+const syncErrors = new Map<string, string>();
+
+export async function getNotificationSyncError(username?: string): Promise<string> {
+  const owner = username?.trim().toLowerCase() || await getCurrentUsername();
+  return syncErrors.get(owner) || '';
+}
 
 async function fetchRemoteInbox(owner: string, token: string): Promise<BackendNotificationResponse> {
   const key = owner + ':' + token;
@@ -218,8 +224,15 @@ export async function getNotifications(username?: string): Promise<AppNotificati
   if (token && owner === await getCurrentUsername()) {
     try {
       const response = await fetchRemoteInbox(owner, token);
-      if (Array.isArray(response?.notifications)) remote = response.notifications.map(mapBackendItem);
-    } catch { /* Network failure uses the last committed local inbox. */ }
+      if (!Array.isArray(response?.notifications)) throw new Error('Dữ liệu thông báo từ backend không hợp lệ.');
+      remote = response.notifications.map(mapBackendItem);
+      syncErrors.delete(owner);
+    } catch (error) {
+      // Preserve the cached inbox but let the screen distinguish it from a confirmed server result.
+      syncErrors.set(owner, error instanceof Error ? error.message : 'Chưa đồng bộ được thông báo mới.');
+    }
+  } else {
+    syncErrors.delete(owner);
   }
   return updateLocal(owner, async local => {
     const deleted = await getDeletedIds(owner);

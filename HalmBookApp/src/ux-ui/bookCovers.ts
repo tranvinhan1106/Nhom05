@@ -2,23 +2,8 @@ import { API_BASE_URL, normalizeAssetUrl } from './apiService';
 
 export { API_BASE_URL };
 
-export const getBookCoverSource = (bookId?: string, remoteUrl?: string): any => {
-  if (remoteUrl && typeof remoteUrl === 'string' && remoteUrl.trim().length > 0) {
-    if (
-      remoteUrl.startsWith('http://') ||
-      remoteUrl.startsWith('https://') ||
-      remoteUrl.startsWith('data:') ||
-      remoteUrl.startsWith('file://')
-    ) {
-      return { uri: normalizeAssetUrl(remoteUrl) };
-    }
-    const cleanPath = remoteUrl.startsWith('/') ? remoteUrl : `/${remoteUrl}`;
-    return { uri: `${API_BASE_URL}${cleanPath}` };
-  }
-  if (bookId && typeof bookId === 'string' && bookId.trim().length > 0) {
-    if (!bookId.startsWith('upload') && !bookId.startsWith('tmp')) {
-      return { uri: `${API_BASE_URL}/api/home/covers/${bookId}.jpg` };
-    }
-  }
-  return null;
+export const getBookCoverSource = (_bookId?: string, remoteUrl?: string): any => {
+  // Covers must come from catalog metadata; book IDs are not image filenames.
+  const uri = typeof remoteUrl === 'string' ? normalizeAssetUrl(remoteUrl) : '';
+  return uri ? { uri } : null;
 };

@@ -41,7 +41,7 @@ export default function HomeBannerCarousel({ width, refreshKey }: { width: numbe
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrate banners from the server on mount and explicit refresh.
     void load();
     const subscription = AppState.addEventListener('change', state => { if (state === 'active') void load(); });
-    const timer = setInterval(() => { if (AppState.currentState === 'active') void load(); }, 60000);
+    const timer = setInterval(() => { if (AppState.currentState === 'active') void load(); }, 15000);
     return () => { clearInterval(timer); subscription.remove(); request.current?.abort(); };
   }, [load, refreshKey]);
 
